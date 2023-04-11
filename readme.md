@@ -1,4 +1,4 @@
-# Shortcut
+# Shortcut-go-client
 
 A command line client for [shortcut-pages](https://github.com/mt-empty/shortcut-pages), written in Golang.
 
