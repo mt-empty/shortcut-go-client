@@ -9,7 +9,9 @@ A command line client for [shortcut-pages](https://github.com/mt-empty/shortcut-
 
 Install from source:
 ```bash
-curl -sSL https://github.com/mt-empty/shortcut-go-client/releases/latest/download/shortcut -o /usr/local/bin/shortcut && sudo chmod +x /usr/local/bin/shortcut && shortcut update 
+sudo curl -sSL https://github.com/mt-empty/shortcut-go-client/releases/latest/download/shortcut -o /usr/local/bin/shortcut \
+  && sudo chmod +x /usr/local/bin/shortcut \
+  && sudo /usr/local/bin/shortcut update 
 ```
 
 
