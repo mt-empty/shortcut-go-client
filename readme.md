@@ -18,19 +18,16 @@ sudo curl -sSL https://github.com/mt-empty/shortcut-go-client/releases/latest/do
 ## Usage
 
 ```
-Usage:
-  shortcut [flags]
-  shortcut [command]
+A shortcut-pages client, pages directory is located at /opt/shortcut/pages/
 
-Available Commands:
-  completion  Generate the autocompletion script for the specified shell
-  help        Help about any command
-  list        List all available shortcut pages in the cache
-  update      Update the local cache
+Usage:
+  shortcut <PROGRAM_NAME> [flags]
 
 Flags:
   -h, --help        help for shortcut
-  -n, --no-colour   Remove colours from the output (default true)
+  -l, --list        List all available shortcut pages in the cache
+  -n, --no-colour   Remove colour from the output
+  -u, --update      Update the local cache
   -v, --version     version for shortcut
 ```
 
