@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// depending on the path, we might require sudo privileges
 const PAGES_BASE_DIR = "/opt/shortcut/pages/"
 const PAGES_FILE_EXT = ".md"
 const DOWNLOAD_ARCHIVE_URL = "https://github.com/mt-empty/shortcut-pages/releases/latest/download/shortcuts.zip"
@@ -71,7 +72,26 @@ func main() {
 
 }
 
+func requiresSudo(path string) bool {
+	//checks whether writing a file to this path requires sudo privileges
+	_, err := os.Create(filepath.Join(path, "/tmp"))
+	if err != nil {
+		// Check if error is "permission denied"
+		if os.IsPermission(err) {
+			return true
+		}
+	}
+	return false
+}
+
 func update() {
+
+	// check if sudo
+	if requiresSudo(PAGES_BASE_DIR) {
+		fmt.Printf("Writing to %s requires sudo privileges, please run with sudo\n", PAGES_BASE_DIR)
+		os.Exit(1)
+	}
+
 	// download archive
 	response, err := http.Get(DOWNLOAD_ARCHIVE_URL)
 	if err != nil {
