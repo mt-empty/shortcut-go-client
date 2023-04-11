@@ -15,7 +15,8 @@ import (
 // depending on the path, we might require sudo privileges
 const PAGES_BASE_DIR = "/opt/shortcut/pages/"
 const PAGES_FILE_EXT = ".md"
-const DOWNLOAD_ARCHIVE_URL = "https://github.com/mt-empty/shortcut-pages/releases/latest/download/shortcuts.zip"
+const ARCHIVE_NAME = "shortcuts.zip"
+const DOWNLOAD_ARCHIVE_URL = "https://github.com/mt-empty/shortcut-pages/releases/latest/download/" + ARCHIVE_NAME
 
 const ANSI_COLOUR_RESET_FG = "\x1b[39m"
 const ANSI_COLOUR_TITLE_FG = "\x1b[39m"
@@ -27,7 +28,9 @@ const ANSI_BOLD_ON = "\x1b[1m"
 const ANSI_BOLD_OFF = "\x1b[22m"
 
 func main() {
-	var noColour bool
+	var noColourFlag bool
+	var updateFlag bool
+	var listFlag bool
 
 	rootCmd := &cobra.Command{
 		Use:     "shortcut <PROGRAM_NAME> [flags]",
@@ -36,34 +39,21 @@ func main() {
 		Version: "1.0.0",
 		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			pageName := args[0]
-			getShortcutPage(pageName, !noColour)
+			if updateFlag {
+				update()
+			} else if listFlag {
+				listShortcuts()
+			} else {
+				pageName := args[0]
+				getShortcutPage(pageName, !noColourFlag)
+
+			}
 
 		},
 	}
-	rootCmd.Flags().BoolVarP(&noColour, "no-colour", "n", false, "Remove colour from the output")
-
-	var listCmd = &cobra.Command{
-		Use:   "list",
-		Short: "List all available shortcut pages in the cache",
-		Long:  ``,
-		Args:  cobra.ExactArgs(0),
-		Run: func(cmd *cobra.Command, args []string) {
-			listShortcuts()
-		},
-	}
-	rootCmd.AddCommand(listCmd)
-
-	var updateCmd = &cobra.Command{
-		Use:   "update",
-		Short: "Update the local cache",
-		Long:  ``,
-		Args:  cobra.ExactArgs(0),
-		Run: func(cmd *cobra.Command, args []string) {
-			update()
-		},
-	}
-	rootCmd.AddCommand(updateCmd)
+	rootCmd.Flags().BoolVarP(&noColourFlag, "no-colour", "n", false, "Remove colour from the output")
+	rootCmd.Flags().BoolVarP(&updateFlag, "list", "l", false, "List all available shortcut pages in the cache")
+	rootCmd.Flags().BoolVarP(&listFlag, "update", "u", false, "Update the local cache")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -74,13 +64,27 @@ func main() {
 
 func requiresSudo(path string) bool {
 	//checks whether writing a file to this path requires sudo privileges
-	_, err := os.Create(filepath.Join(path, "/tmp"))
+
+	err := os.MkdirAll(path, os.ModePerm)
 	if err != nil {
 		// Check if error is "permission denied"
 		if os.IsPermission(err) {
 			return true
 		}
+		panic(err)
 	}
+
+	tempFile, err := os.Create(filepath.Join(path, "./tmp"))
+	if err != nil {
+		// Check if error is "permission denied"
+		if os.IsPermission(err) {
+			return true
+		}
+		panic(err)
+	}
+	defer tempFile.Close()
+	defer os.Remove(tempFile.Name())
+
 	return false
 }
 
@@ -88,15 +92,15 @@ func update() {
 
 	// check if sudo
 	if requiresSudo(PAGES_BASE_DIR) {
-		fmt.Printf("Writing to %s requires sudo privileges, please run with sudo\n", PAGES_BASE_DIR)
+		fmt.Fprintf(os.Stderr, "Writing to %s requires sudo privileges, please run with sudo\n", PAGES_BASE_DIR)
 		os.Exit(1)
 	}
 
 	// download archive
 	response, err := http.Get(DOWNLOAD_ARCHIVE_URL)
 	if err != nil {
-		fmt.Println("Error downloading archive: ", err)
-		return
+		fmt.Fprintln(os.Stderr, "Error downloading archive: ", err)
+		os.Exit(1)
 	}
 	defer response.Body.Close()
 
@@ -105,7 +109,7 @@ func update() {
 		panic(err)
 	}
 
-	tempFile, err := os.Create(PAGES_BASE_DIR + "shortcuts.zip")
+	tempFile, err := os.Create(PAGES_BASE_DIR + ARCHIVE_NAME)
 	if err != nil {
 		panic(err)
 	}
@@ -145,17 +149,26 @@ func update() {
 			panic(err)
 		}
 	}
-	fmt.Println("Successfully updated cache")
+	fmt.Fprintln(os.Stdout, "Successfully updated cache")
 }
 
 func listShortcuts() {
 	// print list of files in a directory
 	files, err := os.ReadDir(PAGES_BASE_DIR)
 	if err != nil {
+		if os.IsNotExist(err) {
+			fmt.Fprintf(os.Stderr, "Shortcut pages directory at %s does not exist, please run shortcut update\n", PAGES_BASE_DIR)
+			os.Exit(1)
+		}
 		panic(err)
 	}
+
+	if len(files) == 0 {
+		fmt.Fprintln(os.Stderr, "Shortcut pages directory is empty, please run shortcut update")
+	}
+
 	for _, file := range files {
-		fmt.Println(file.Name()[0 : len(file.Name())-len(PAGES_FILE_EXT)])
+		fmt.Fprintln(os.Stdout, file.Name()[0:len(file.Name())-len(PAGES_FILE_EXT)])
 	}
 
 }
@@ -163,14 +176,14 @@ func listShortcuts() {
 func getShortcutPage(programName string, IsColourOn bool) bool {
 	cleanProgramName := filepath.Clean(programName)
 	if cleanProgramName != filepath.Base(cleanProgramName) {
-		fmt.Printf("Invalid program name \"%s\"\n", programName)
+		fmt.Fprintf(os.Stderr, "Invalid program name \"%s\"\n", programName)
 		return false
 	}
 	var programPath string = PAGES_BASE_DIR + cleanProgramName + PAGES_FILE_EXT
 	// open a file
 	file, err := os.Open(programPath)
 	if err != nil {
-		fmt.Printf("No page available for \"%s\"\n", programName)
+		fmt.Fprintf(os.Stderr, "No page available for \"%s\"\n", programName)
 		return false
 	}
 	defer file.Close()
@@ -191,26 +204,26 @@ func parseShortcutPage(fileDescriptor *os.File, IsColourOn bool) bool {
 				switch char {
 				case '#':
 					if IsColourOn {
-						fmt.Print(ANSI_BOLD_ON + ANSI_COLOUR_TITLE_FG)
+						fmt.Fprint(os.Stdout, ANSI_BOLD_ON+ANSI_COLOUR_TITLE_FG)
 					}
 					start = true
 				case '$':
 					if IsColourOn {
-						fmt.Print(ANSI_COLOUR_CATEGORY_FG)
+						fmt.Fprint(os.Stdout, ANSI_COLOUR_CATEGORY_FG)
 					}
 					start = true
 				case '>':
 					if IsColourOn {
-						fmt.Print(ANSI_COLOUR_EXPLANATION_FG)
+						fmt.Fprint(os.Stdout, ANSI_COLOUR_EXPLANATION_FG)
 					}
 					start = true
 				case '`':
 					if IsColourOn {
-						fmt.Print(ANSI_COLOUR_SHORTCUT_FG)
+						fmt.Fprint(os.Stdout, ANSI_COLOUR_SHORTCUT_FG)
 					}
 					start = true
 				default:
-					fmt.Printf("%c", char)
+					fmt.Fprintf(os.Stdout, "%c", char)
 				}
 
 			} else {
@@ -218,33 +231,31 @@ func parseShortcutPage(fileDescriptor *os.File, IsColourOn bool) bool {
 				case '{':
 					if line[i+1] == '{' {
 						if IsColourOn {
-							fmt.Print(ANSI_COLOUR_DESCRIPTION_FG)
+							fmt.Fprint(os.Stdout, ANSI_COLOUR_DESCRIPTION_FG)
 						}
 					} else if line[i-1] == '{' {
 						continue
 					} else {
-						fmt.Printf("%c", char)
+						fmt.Fprintf(os.Stdout, "%c", char)
 					}
 
 				case '}':
 					if line[i+1] == '}' {
 						if IsColourOn {
-							fmt.Print(ANSI_COLOUR_DESCRIPTION_FG)
+							fmt.Fprint(os.Stdout, ANSI_COLOUR_DESCRIPTION_FG)
 						}
 					} else if line[i-1] == '}' {
 						continue
 					} else {
-						fmt.Printf("%c", char)
+						fmt.Fprintf(os.Stdout, "%c", char)
 					}
 
 				default:
-					fmt.Printf("%c", char)
+					fmt.Fprintf(os.Stdout, "%c", char)
 				}
 			}
 		}
-		fmt.Print(ANSI_BOLD_OFF)
-		fmt.Print(ANSI_COLOUR_RESET_FG)
-		fmt.Println()
+		fmt.Fprintln(os.Stdout, ANSI_BOLD_OFF+ANSI_COLOUR_RESET_FG)
 
 	}
 	return true
