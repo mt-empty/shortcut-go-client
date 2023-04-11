@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const PAGES_BASE_DIR = "/tmp/shortcut/pages/"
+const PAGES_BASE_DIR = "/opt/shortcut/pages/"
 const PAGES_FILE_EXT = ".md"
 const DOWNLOAD_ARCHIVE_URL = "https://github.com/mt-empty/shortcut-pages/releases/latest/download/shortcuts.zip"
 
@@ -27,11 +27,10 @@ const ANSI_BOLD_OFF = "\x1b[22m"
 
 func main() {
 	var noColour bool
-	getShortcutPage("../chrome", true)
 
 	rootCmd := &cobra.Command{
 		Use:     "shortcut <PROGRAM_NAME> [flags]",
-		Short:   "A fast shortcut client",
+		Short:   "A shortcut-pages client, pages directory is located at " + PAGES_BASE_DIR,
 		Long:    ``,
 		Version: "1.0.0",
 		Args:    cobra.ExactArgs(1),
