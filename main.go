@@ -27,6 +27,8 @@ const ANSI_COLOUR_CATEGORY_FG = "\x1b[37m"
 const ANSI_BOLD_ON = "\x1b[1m"
 const ANSI_BOLD_OFF = "\x1b[22m"
 
+var Version = "development"
+
 func main() {
 	var noColourFlag bool
 	var updateFlag bool
@@ -36,24 +38,26 @@ func main() {
 		Use:     "shortcut <PROGRAM_NAME> [flags]",
 		Short:   "A shortcut-pages client, pages directory is located at " + PAGES_BASE_DIR,
 		Long:    ``,
-		Version: "1.0.0",
-		Args:    cobra.ExactArgs(1),
+		Version: Version,
+		// Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if updateFlag {
 				update()
-			} else if listFlag {
-				listShortcuts()
-			} else {
-				pageName := args[0]
-				getShortcutPage(pageName, !noColourFlag)
-
 			}
 
+			if listFlag {
+				listShortcuts()
+			} else if len(args) > 0 {
+				pageName := args[0]
+				getShortcutPage(pageName, !noColourFlag)
+			} else {
+				cmd.Help()
+			}
 		},
 	}
 	rootCmd.Flags().BoolVarP(&noColourFlag, "no-colour", "n", false, "Remove colour from the output")
-	rootCmd.Flags().BoolVarP(&updateFlag, "list", "l", false, "List all available shortcut pages in the cache")
-	rootCmd.Flags().BoolVarP(&listFlag, "update", "u", false, "Update the local cache")
+	rootCmd.Flags().BoolVarP(&listFlag, "list", "l", false, "List all available shortcut pages in the cache")
+	rootCmd.Flags().BoolVarP(&updateFlag, "update", "u", false, "Update the local cache")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
