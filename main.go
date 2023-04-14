@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-
+	"strings"
 	"github.com/spf13/cobra"
 )
 
@@ -36,7 +36,7 @@ func main() {
 
 	rootCmd := &cobra.Command{
 		Use:     "shortcut <PROGRAM_NAME> [flags]",
-		Short:   "A shortcut-pages client, pages directory is located at " + PAGES_BASE_DIR,
+		Short:   "A shortcut-pages client, pages are located at " + PAGES_BASE_DIR,
 		Long:    ``,
 		Version: Version,
 		// Args:    cobra.ExactArgs(1),
@@ -47,8 +47,8 @@ func main() {
 
 			if listFlag {
 				listShortcuts()
-			} else if len(args) > 0 {
-				pageName := args[0]
+			} else if len(args) > 0 && strings.TrimSpace(args[0]) != "" {
+				pageName := strings.TrimSpace(args[0])
 				getShortcutPage(pageName, !noColourFlag)
 			} else {
 				cmd.Help()
@@ -161,14 +161,14 @@ func listShortcuts() {
 	files, err := os.ReadDir(PAGES_BASE_DIR)
 	if err != nil {
 		if os.IsNotExist(err) {
-			fmt.Fprintf(os.Stderr, "Shortcut pages directory at %s does not exist, please run shortcut update\n", PAGES_BASE_DIR)
+			fmt.Fprintf(os.Stderr, "Shortcut pages directory at %s does not exist, please run shortcut --update\n", PAGES_BASE_DIR)
 			os.Exit(1)
 		}
 		panic(err)
 	}
 
 	if len(files) == 0 {
-		fmt.Fprintln(os.Stderr, "Shortcut pages directory is empty, please run shortcut update")
+		fmt.Fprintln(os.Stderr, "Shortcut pages directory is empty, please run shortcut --update")
 	}
 
 	for _, file := range files {
@@ -183,7 +183,7 @@ func getShortcutPage(programName string, IsColourOn bool) bool {
 		fmt.Fprintf(os.Stderr, "Invalid program name \"%s\"\n", programName)
 		return false
 	}
-	var programPath string = PAGES_BASE_DIR + cleanProgramName + PAGES_FILE_EXT
+	var programPath string = PAGES_BASE_DIR + strings.ToLower(cleanProgramName) + PAGES_FILE_EXT
 	// open a file
 	file, err := os.Open(programPath)
 	if err != nil {
